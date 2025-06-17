@@ -1,61 +1,60 @@
 <?php
 
-namespace App\Http\Controllers; 
+namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Profile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use App\Http\Controllers\Controller; 
 
 class UserController extends Controller
 {
-    // Method para sa dashboard view (home page ng user or admin)
+    // Dashboard page
     public function dashboard()
     {
-        return view('dashboard');
+        $user = Auth::user()->load('profile');
+        return view('dashboard', compact('user'));
     }
 
-    // Ipapakita ang listahan ng users, with optional search
+    // User listing (excluding superadmin)
     public function index(Request $request)
     {
-        // Kukunin ang users with their profile, with search capability
         $users = User::with('profile')
+            ->where('role', '!=', 'superadmin') // Hide superadmin
             ->when($request->search, function ($q, $search) {
-                // Search sa username or firstname/lastname ng profile
                 $q->where('username', 'like', "%$search%")
-                    ->orWhereHas('profile', function ($q) use ($search) {
-                        $q->where('firstname', 'like', "%$search%")
-                          ->orWhere('lastname', 'like', "%$search%");
-                    });
+                  ->orWhereHas('profile', function ($q) use ($search) {
+                      $q->where('firstname', 'like', "%$search%")
+                        ->orWhere('lastname', 'like', "%$search%");
+                  });
             })
-            ->paginate(5); // Ipaginate natin, 5 per page
+            ->paginate(5);
 
         return view('users.index', compact('users'));
     }
 
-    // Ipakita ang specific na user at profile
+    // Show single user with profile
     public function show(User $user)
     {
-        $user->load('profile'); // Load user profile relationship
+        $user->load('profile');
         return view('users.show', compact('user'));
     }
 
-    // Form para gumawa ng bagong user
+    // Create user form
     public function create()
     {
         return view('users.create');
     }
 
-    // Logic para i-save ang bagong user at profile sa database
+    // Store new user and profile
     public function store(Request $request)
     {
-        // Validation ng user input bago i-save
         $request->validate([
             'username' => 'required|unique:users',
             'email' => 'required|unique:users|email',
             'password' => 'required|confirmed|min:6',
-            'firstname' => 'required|string',    
+            'firstname' => 'required|string',
             'middlename' => 'nullable|alpha',
             'lastname' => 'required|string',
             'address' => 'required|regex:/^[\w\s\#\.\,\-]+$/',
@@ -65,16 +64,14 @@ class UserController extends Controller
             'status' => 'required|boolean',
         ]);
 
-        // Gumagawa ng bagong user sa users table
         $user = User::create([
             'username' => $request->username,
             'email' => $request->email,
-            'password' => Hash::make($request->password), 
+            'password' => Hash::make($request->password),
             'status' => $request->status,
-            'role' => 'user', // Default role is 'user'
+            'role' => 'user',
         ]);
 
-        // Gumawa ng profile gamit ang user relationship
         $user->profile()->create([
             'firstname' => $request->firstname,
             'middlename' => $request->middlename,
@@ -88,17 +85,24 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('success', 'User created.');
     }
 
-    // Ipakita ang edit form para sa user at profile
+    // Edit user
     public function edit(User $user)
     {
-        $user->load('profile'); // Load profile data para sa form
+        if (Auth::user()->cannot('update', $user)) {
+            abort(403, 'Unauthorized');
+        }
+
+        $user->load('profile');
         return view('users.edit', compact('user'));
     }
 
-    // Logic para i-update ang user at profile data
+    // Update user & profile
     public function update(Request $request, User $user)
     {
-        // Validation for updating (email should be unique maliban sa current user)
+        if (Auth::user()->cannot('update', $user)) {
+            abort(403, 'Unauthorized');
+        }
+
         $request->validate([
             'email' => 'required|email|unique:users,email,' . $user->id,
             'firstname' => 'required|string',
@@ -108,33 +112,41 @@ class UserController extends Controller
             'company' => 'required|string',
             'contact_number' => 'required|numeric',
             'position' => 'required|string',
-            'status' => 'required|boolean',
+            'status' => 'nullable|boolean',
         ]);
 
-        // Update ng user table
         $user->update([
             'email' => $request->email,
-            'status' => $request->status,
+            'status' => $request->status ?? $user->status,
         ]);
 
-        // Update ng profile table gamit ang relationship
-        $user->profile->update([
-            'firstname' => $request->firstname,
-            'middlename' => $request->middlename,
-            'lastname' => $request->lastname,
-            'address' => $request->address,
-            'company' => $request->company,
-            'contact_number' => $request->contact_number,
-            'position' => $request->position,
-        ]);
+        if ($user->profile) {
+            $user->profile->update([
+                'firstname' => $request->firstname,
+                'middlename' => $request->middlename,
+                'lastname' => $request->lastname,
+                'address' => $request->address,
+                'company' => $request->company,
+                'contact_number' => $request->contact_number,
+                'position' => $request->position,
+            ]);
+        }
 
-        return redirect()->route('users.index')->with('success', 'User updated.');
+        if (Auth::user()->role === 'superadmin') {
+            return redirect()->route('users.index')->with('success', 'User updated.');
+        }
+
+        return redirect()->route('dashboard')->with('success', 'Your profile has been updated.');
     }
 
-    // Pang-delete ng user kasama ang profile via cascading
+    // Delete user
     public function destroy(User $user)
     {
-        $user->delete(); // Delete user, automatic na rin madedelete profile kung naka-cascade
+        if (Auth::user()->cannot('delete', $user)) {
+            abort(403, 'Unauthorized');
+        }
+
+        $user->delete();
         return back()->with('success', 'User deleted.');
     }
 }
