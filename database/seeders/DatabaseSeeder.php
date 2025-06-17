@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
+<<<<<<< HEAD
     
      //admin seeder  
 public function run(): void
@@ -27,4 +28,15 @@ public function run(): void
         SuperAdminSeeder::class,
     ]);
 }
+=======
+    public function run(): void
+    {
+        // User::factory(10)->create();
+
+        User::factory()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+        ]);
+    }
+>>>>>>> 973fba8 (changes)
 }

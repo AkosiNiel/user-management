@@ -3,7 +3,10 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+<<<<<<< HEAD
 use App\Http\Middleware\CheckSuperAdmin;
+=======
+>>>>>>> 973fba8 (changes)
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,9 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+<<<<<<< HEAD
         $middleware->alias([
             'check.superadmin' => CheckSuperAdmin::class,
         ]);
+=======
+        //
+>>>>>>> 973fba8 (changes)
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

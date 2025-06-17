@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+<<<<<<< HEAD
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 
@@ -21,3 +22,9 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     });
 });
+=======
+
+Route::get('/', function () {
+    return view('welcome');
+});
+>>>>>>> 973fba8 (changes)
