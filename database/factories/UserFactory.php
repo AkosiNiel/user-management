@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Database\Factories;
 
 use App\Models\User;
@@ -24,3 +23,4 @@ class UserFactory extends Factory
         ];
     }
 }
+
