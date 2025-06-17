@@ -13,18 +13,13 @@ class DatabaseSeeder extends Seeder
      */
     
      //admin seeder  
-public function run(): void
-{
-    $this->call([
-        AdminUsersSeeder::class,
-    ]);
-}
-
-    //superadmin seeder
     public function run(): void
-{
-    $this->call([
-        SuperAdminSeeder::class,
-    ]);
-}
+    {
+        $this->call([
+            AdminUsersSeeder::class,
+            SuperAdminSeeder::class,
+        ]);
+    }
+
+
 }
