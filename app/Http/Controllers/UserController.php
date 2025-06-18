@@ -17,12 +17,12 @@ class UserController extends Controller
         return view('dashboard', compact('user'));
     }
 
-    // User listing (excluding superadmin)
+    // Superadmin: User listing
     public function index(Request $request)
     {
         $users = User::with('profile')
-              ->where('role', '!=', 'superadmin')
-             ->when($request->search, function ($q, $search) {
+            ->where('role', '!=', 'superadmin')
+            ->when($request->search, function ($q, $search) {
                 $q->where('username', 'like', "%$search%")
                   ->orWhereHas('profile', function ($q) use ($search) {
                       $q->where('firstname', 'like', "%$search%")
@@ -84,7 +84,8 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        if (Auth::user()->role !== 'superadmin' && Auth::id() !== $user->id) {
+        // Superadmin or the user themselves
+        if (Auth::id() !== $user->id && Auth::user()->role !== 'superadmin') {
             abort(403, 'Unauthorized');
         }
 
@@ -94,7 +95,8 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        if (Auth::user()->role !== 'superadmin' && Auth::id() !== $user->id) {
+        // Superadmin or the user themselves
+        if (Auth::id() !== $user->id && Auth::user()->role !== 'superadmin') {
             abort(403, 'Unauthorized');
         }
 
@@ -110,22 +112,27 @@ class UserController extends Controller
             'status' => 'nullable|boolean',
         ]);
 
-        $user->update([
-            'email' => $request->email,
-            'status' => $request->status ?? $user->status,
-        ]);
-
-        if ($user->profile) {
-            $user->profile->update([
-                'firstname' => $request->firstname,
-                'middlename' => $request->middlename,
-                'lastname' => $request->lastname,
-                'address' => $request->address,
-                'company' => $request->company,
-                'contact_number' => $request->contact_number,
-                'position' => $request->position,
+        // Only superadmin can change status
+        if (Auth::user()->role === 'superadmin') {
+            $user->update([
+                'email' => $request->email,
+                'status' => $request->status ?? $user->status,
+            ]);
+        } else {
+            $user->update([
+                'email' => $request->email,
             ]);
         }
+
+        $user->profile()->update([
+            'firstname' => $request->firstname,
+            'middlename' => $request->middlename,
+            'lastname' => $request->lastname,
+            'address' => $request->address,
+            'company' => $request->company,
+            'contact_number' => $request->contact_number,
+            'position' => $request->position,
+        ]);
 
         return redirect()->route(
             Auth::user()->role === 'superadmin' ? 'users.index' : 'dashboard'
@@ -142,7 +149,7 @@ class UserController extends Controller
         return back()->with('success', 'User deleted.');
     }
 
-    // ✅ Regular user editing their own profile
+    // For regular user editing their own profile
     public function editOwn()
     {
         $user = Auth::user()->load('profile');
@@ -152,6 +159,6 @@ class UserController extends Controller
     public function updateOwn(Request $request)
     {
         $user = Auth::user();
-        return $this->update($request, $user); // reuse existing update logic
+        return $this->update($request, $user);
     }
 }
