@@ -7,17 +7,22 @@ use Illuminate\Support\Facades\Auth;
 
 class CheckSuperAdmin
 {
-    
     public function handle($request, Closure $next)
     {
-        // Una, iche-check kung naka-login ba ang user at kung ang role niya ay 'superadmin'
-        if (!Auth::check() || Auth::user()->role !== 'superadmin') {
-            // Kung hindi siya superadmin or hindi naka-login, ibabalik siya sa dashboard
-            // at magpapakita ng 'Unauthorized' na error message
-            return redirect('/dashboard')->with('error', 'Unauthorized.');
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return redirect('/login')->with('error', 'You must be logged in.');
         }
 
-        // Kung pasado ang user (naka-login at superadmin), tuloy ang request
+        $user = Auth::user();
+
+        // Check if user has 'superadmin' role
+        if ($user->role !== 'superadmin') {
+            // Optionally, log or show what role was found (for debugging)
+            return abort(403, 'Access denied. Your role: ' . ($user->role ?? 'none'));
+        }
+
+        // Proceed if superadmin
         return $next($request);
     }
 }

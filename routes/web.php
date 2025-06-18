@@ -4,21 +4,34 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 
-// Login and Logout routes
+/*
+|--------------------------------------------------------------------------
+| Authentication Routes
+|--------------------------------------------------------------------------
+*/
 Route::get('/', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
+/*
+|--------------------------------------------------------------------------
+| Protected Routes (Authenticated Users)
+|--------------------------------------------------------------------------
+*/
 Route::middleware(['auth'])->group(function () {
+    // Dashboard for all users
     Route::get('/dashboard', [UserController::class, 'dashboard'])->name('dashboard');
 
-    // Resource routes include index, create, store, show, edit, update, destroy
-    Route::resource('users', UserController::class);
+    // Regular user profile routes
+    Route::get('/profile/edit', [UserController::class, 'editOwn'])->name('profile.edit');
+    Route::put('/profile/update', [UserController::class, 'updateOwn'])->name('profile.update');
 
-    // Optional: If you only want superadmins to delete users
+    /*
+    |--------------------------------------------------------------------------
+    | Superadmin Routes
+    |--------------------------------------------------------------------------
+    */
     Route::middleware(['check.superadmin'])->group(function () {
-      
-        Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::resource('users', UserController::class);
     });
 });
-

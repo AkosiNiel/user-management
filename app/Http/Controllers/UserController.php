@@ -21,8 +21,8 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $users = User::with('profile')
-            ->where('role', '!=', 'superadmin') // Hide superadmin
-            ->when($request->search, function ($q, $search) {
+              ->where('role', '!=', 'superadmin')
+             ->when($request->search, function ($q, $search) {
                 $q->where('username', 'like', "%$search%")
                   ->orWhereHas('profile', function ($q) use ($search) {
                       $q->where('firstname', 'like', "%$search%")
@@ -34,20 +34,17 @@ class UserController extends Controller
         return view('users.index', compact('users'));
     }
 
-    // Show single user with profile
     public function show(User $user)
     {
         $user->load('profile');
         return view('users.show', compact('user'));
     }
 
-    // Create user form
     public function create()
     {
         return view('users.create');
     }
 
-    // Store new user and profile
     public function store(Request $request)
     {
         $request->validate([
@@ -85,10 +82,9 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('success', 'User created.');
     }
 
-    // Edit user
     public function edit(User $user)
     {
-        if (Auth::user()->cannot('update', $user)) {
+        if (Auth::user()->role !== 'superadmin' && Auth::id() !== $user->id) {
             abort(403, 'Unauthorized');
         }
 
@@ -96,10 +92,9 @@ class UserController extends Controller
         return view('users.edit', compact('user'));
     }
 
-    // Update user & profile
     public function update(Request $request, User $user)
     {
-        if (Auth::user()->cannot('update', $user)) {
+        if (Auth::user()->role !== 'superadmin' && Auth::id() !== $user->id) {
             abort(403, 'Unauthorized');
         }
 
@@ -132,21 +127,31 @@ class UserController extends Controller
             ]);
         }
 
-        if (Auth::user()->role === 'superadmin') {
-            return redirect()->route('users.index')->with('success', 'User updated.');
-        }
-
-        return redirect()->route('dashboard')->with('success', 'Your profile has been updated.');
+        return redirect()->route(
+            Auth::user()->role === 'superadmin' ? 'users.index' : 'dashboard'
+        )->with('success', 'Profile updated.');
     }
 
-    // Delete user
     public function destroy(User $user)
     {
-        if (Auth::user()->cannot('delete', $user)) {
+        if (Auth::user()->role !== 'superadmin') {
             abort(403, 'Unauthorized');
         }
 
         $user->delete();
         return back()->with('success', 'User deleted.');
+    }
+
+    // ✅ Regular user editing their own profile
+    public function editOwn()
+    {
+        $user = Auth::user()->load('profile');
+        return view('users.edit', compact('user'));
+    }
+
+    public function updateOwn(Request $request)
+    {
+        $user = Auth::user();
+        return $this->update($request, $user); // reuse existing update logic
     }
 }
